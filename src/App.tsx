@@ -1,6 +1,6 @@
 import { bitable } from '@lark-base-open/js-sdk';
 import './App.css';
-import { getStructuredData, watchSelectionData, watchRowAllFields, getTableRecordIds, getRowAllFields, RowData, FieldData, RecordListData} from './utils/get_structured_data';
+import { getStructuredData, watchSelectionData, watchRowAllFields, getTableRecordIds, getRowAllFields, RowData, FieldData, RecordListData, writeDataToField} from './utils/get_structured_data';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ExcalidrawComponent from './components/ExcalidrawComponent';
 import mockData from './mock/data.json';
@@ -84,6 +84,15 @@ export default function App() {
     console.log('Updated data in App:', newData);
     console.log('isComplete:', isComplete);
     if (isComplete === 2) {
+      const WriteData = async () => {
+        const writeResult = await writeDataToField("已标注", {
+          fieldName: '标注状态',
+          useCurrentSelection: false,
+          tableId: currentTableId,
+          recordId: recordIds[currentRecordIndex]
+        });
+      }
+      WriteData();
       handleNextRow();
     }
   };
@@ -171,63 +180,6 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* 导航按钮 */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        padding: '10px', 
-        backgroundColor: '#f5f5f5',
-        borderBottom: '1px solid #ddd',
-        gap: '10px'
-      }}>
-        <button 
-          onClick={handlePreviousRow}
-          disabled={currentRecordIndex <= 0}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: currentRecordIndex <= 0 ? '#ccc' : '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: currentRecordIndex <= 0 ? 'not-allowed' : 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          ← 上一行
-        </button>
-        
-        <span style={{ 
-          fontSize: '14px', 
-          color: '#666',
-          minWidth: '80px',
-          textAlign: 'center'
-        }}>
-          {recordIds.length > 0 ? `${currentRecordIndex + 1} / ${recordIds.length}` : '0 / 0'}
-        </span>
-        
-        <button 
-          onClick={handleNextRow}
-          disabled={currentRecordIndex >= recordIds.length - 1}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: currentRecordIndex >= recordIds.length - 1 ? '#ccc' : '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: currentRecordIndex >= recordIds.length - 1 ? 'not-allowed' : 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          下一行 →
-        </button>
-      </div>
-      
-      {/* Excalidraw组件 */}
-      <div style={{ flex: 1 }}>
-        <ExcalidrawComponent data={structuredData} onDataChange={handleDataChange}></ExcalidrawComponent>
-      </div>
-    </div>
+    <ExcalidrawComponent data={structuredData} onDataChange={handleDataChange}></ExcalidrawComponent>
   )
 }

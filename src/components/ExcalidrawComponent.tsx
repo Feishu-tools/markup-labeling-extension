@@ -23,7 +23,13 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<number | null>(null);
   const [drawingMode, setDrawingMode] = useState<{ active: boolean; questionIndex: number | null }>({ active: false, questionIndex: null });
+
+  // 判断answer_location是否有有效值的辅助函数
+  const hasValidAnswerLocation = (answerLocation: [number, number, number, number]): boolean => {
+    return answerLocation && answerLocation.length === 4 && answerLocation.some(coord => coord !== 0);
+  };
   const [isComplete, setIsComplete] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const imageElementId = 'background-image';
   const lastImageUrlRef = useRef<string | null>(null);
 
@@ -465,7 +471,9 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
               </button>
             </div> */}
           </div>
-          {data[0].question_list.map((question, index) => (
+          {data[0].question_list.map((question, index) => {
+            const hasAnswer = hasValidAnswerLocation(question.answer_location);
+            return (
             <div
               key={index}
               style={{
@@ -477,7 +485,10 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
                 borderRadius: '6px',
                 transition: 'all 0.2s ease',
                 fontSize: '14px',
-                lineHeight: '1.5'
+                lineHeight: '1.5',
+                boxShadow: hasAnswer 
+                  ? '0 0 15px rgba(40, 167, 69, 0.8), 0 0 25px rgba(40, 167, 69, 0.4)' 
+                  : '0 0 15px rgba(108, 117, 125, 0.6), 0 0 25px rgba(108, 117, 125, 0.3)'
               }}
             >
               <div 
@@ -523,7 +534,8 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
                 </button>
               </div>
             </div>
-          ))}
+          );
+          })}
           
           {/* 确认按钮 */}
           <div style={{ 
@@ -532,11 +544,19 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
             borderTop: '2px solid #ddd' 
           }}>
             <button
-              onClick={() => {
-                if (data && data.length > 0 && onDataChange) {
-                  onDataChange(data, 2);
+              onClick={async () => {
+                if (data && data.length > 0 && onDataChange && !isSubmitting) {
+                  setIsSubmitting(true);
+                  try {
+                    onDataChange(data, 2);
+                    // 模拟数据写入延迟
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                  } finally {
+                    setIsSubmitting(false);
+                  }
                 }
               }}
+              disabled={isSubmitting}
               style={{
                 width: '100%',
                 padding: '12px 20px',
@@ -544,15 +564,24 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
                 fontWeight: 'bold',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: 'pointer',
-                backgroundColor: '#28a745',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                backgroundColor: isSubmitting ? '#6c757d' : '#28a745',
                 color: 'white',
-                transition: 'background-color 0.2s ease'
+                transition: 'background-color 0.2s ease',
+                opacity: isSubmitting ? 0.7 : 1
               }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
+              onMouseOver={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#218838';
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#28a745';
+                }
+              }}
             >
-              确认完成
+              {isSubmitting ? '写入数据中...' : '确认完成'}
             </button>
           </div>
         </div>

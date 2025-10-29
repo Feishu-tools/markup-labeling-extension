@@ -39,6 +39,15 @@ export interface RecordListData {
   tableName?: string;
 }
 
+// 定义数据写入的返回类型
+export interface WriteDataResult {
+  success: boolean;
+  error?: string;
+  tableId?: string;
+  recordId?: string;
+  fieldId?: string;
+}
+
 // 定义选项参数类型
 export interface GetDataOptions {
   tableId?: string;
@@ -237,6 +246,91 @@ export async function getTableRecordIds(options: GetDataOptions = {}): Promise<R
     return {
       success: false,
       error: error instanceof Error ? error.message : '获取记录列表时发生未知错误'
+    };
+  }
+}
+
+/**
+ * 写入数据到指定字段
+ * @param data 要写入的数据
+ * @param options 配置选项
+ * @returns Promise<WriteDataResult> 返回写入结果
+ */
+export async function writeDataToField(data: any, options: GetDataOptions & { fieldName?: string } = {}): Promise<WriteDataResult> {
+  try {
+    let { tableId, recordId, fieldId, fieldName, useCurrentSelection = true } = options;
+
+    // 如果没有提供具体参数且允许使用当前选择，则获取当前选中的单元格
+    if (useCurrentSelection && (!tableId || !recordId)) {
+      const selection = await bitable.base.getSelection();
+      
+      if (!selection.recordId || !selection.tableId) {
+        return {
+          success: false,
+          error: '未选中有效的记录，请选择一个单元格或提供具体的tableId、recordId参数'
+        };
+      }
+      
+      tableId = selection.tableId;
+      recordId = selection.recordId;
+    }
+
+    // 验证必要参数
+    if (!tableId || !recordId) {
+      return {
+        success: false,
+        error: '缺少必要参数：tableId、recordId'
+      };
+    }
+
+    // 获取表格信息
+    const table = await bitable.base.getTable(tableId);
+    
+    // 如果提供了字段名称，根据名称查找字段ID
+    if (fieldName && !fieldId) {
+      const fieldMetaList: IFieldMeta[] = await table.getFieldMetaList();
+      const targetField = fieldMetaList.find(field => field.name === fieldName);
+      
+      if (!targetField) {
+        return {
+          success: false,
+          error: `未找到名为 "${fieldName}" 的字段`
+        };
+      }
+      
+      fieldId = targetField.id;
+    }
+
+    // 验证字段ID
+    if (!fieldId) {
+      return {
+        success: false,
+        error: '缺少必要参数：fieldId 或 fieldName'
+      };
+    }
+
+    // 获取字段并写入数据
+    const field = await table.getField(fieldId);
+    
+    // 将数据转换为JSON字符串（如果是对象或数组）
+    let writeData = data;
+    if (typeof data === 'object' && data !== null) {
+      writeData = JSON.stringify(data);
+    }
+    
+    await field.setValue(recordId, writeData);
+    
+    return {
+      success: true,
+      tableId,
+      recordId,
+      fieldId
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '写入数据时发生未知错误'
     };
   }
 }
