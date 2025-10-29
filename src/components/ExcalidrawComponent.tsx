@@ -6,6 +6,7 @@ import '@excalidraw/excalidraw/index.css';
 interface Question {
   question: string;
   answer_location: [number, number, number, number];
+  filter: boolean;
 }
 
 interface DataItem {
@@ -25,6 +26,16 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
   const imageElementId = 'background-image';
   const lastImageUrlRef = useRef<string | null>(null);
 
+  const getProxiedUrl = (url: string) => {
+    const s3Prefix = 'https://algo-public.s3.cn-north-1.amazonaws.com.cn';
+    if (url.startsWith(s3Prefix)) {
+      const proxiedUrl = url.replace(s3Prefix, '/s3-proxy');
+      console.log(`URL translated from ${url} to ${proxiedUrl}`);
+      return proxiedUrl;
+    }
+    return url;
+  };
+
   // 获取图片的原始尺寸
   const getImageSize = (url: string): Promise<{ width: number; height: number }> => {
     return new Promise((resolve, reject) => {
@@ -33,6 +44,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
         resolve({ width: img.width, height: img.height });
       };
       img.onerror = reject;
+      console.log("Getting image size for:", url);
       img.src = url;
     });
   };
@@ -40,7 +52,11 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
   // 将图片 URL 转换为 base64, 以便在 Excalidraw 中使用
   const toDataURL = async (url: string) => {
     try {
-      const response = await fetch(url);
+      console.log("Fetching image for data URL conversion:", url);
+      // Ensure the URL is absolute for the fetch request to be handled by the proxy
+      const absoluteUrl = new URL(url, window.location.origin).href;
+      console.log("Absolute URL for fetch:", absoluteUrl);
+      const response = await fetch(absoluteUrl);
       const blob = await response.blob();
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -58,7 +74,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
   useEffect(() => {
     if (data && data.length > 0 && excalidrawAPI) {
       const currentData = data[0];
-      const imageUrl = currentData.image_url;
+      const imageUrl = getProxiedUrl(currentData.image_url);
 
       const setupScene = async () => {
         const imageChanged = imageUrl !== lastImageUrlRef.current;
@@ -199,7 +215,82 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
     }
   }, [data, excalidrawAPI]);
 
-  // 点击题目时，在图片上创建或更新高亮矩形
+  // 处理filter切换事件
+  const handleFilterToggle = (questionIndex: number) => {
+    if (!data || !data.length || !onDataChange) return;
+
+    const newData = JSON.parse(JSON.stringify(data)); // Deep copy
+    newData[0].question_list[questionIndex].filter = !newData[0].question_list[questionIndex].filter;
+    
+    onDataChange(newData);
+    console.log(`题目 ${questionIndex + 1} filter状态已切换为:`, newData[0].question_list[questionIndex].filter);
+  };
+
+  // 数据导出功能
+  const exportData = (format: 'json' | 'csv' = 'json') => {
+    if (!data || !data.length) {
+      console.warn('没有可导出的数据');
+      return null;
+    }
+
+    const currentData = data[0];
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    if (format === 'json') {
+      // 导出JSON格式
+      const jsonData = JSON.stringify(currentData, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `question_data_${timestamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      console.log('JSON数据已导出:', currentData);
+      return currentData;
+    } else if (format === 'csv') {
+      // 导出CSV格式
+      const headers = ['题目序号', '题目内容', '答案位置X1', '答案位置Y1', '答案位置X2', '答案位置Y2', '过滤状态'];
+      const csvRows = [headers.join(',')];
+      
+      currentData.question_list.forEach((question, index) => {
+        const row = [
+          index + 1,
+          `"${question.question.replace(/"/g, '""')}"`, // 转义双引号
+          question.answer_location[0] || '',
+          question.answer_location[1] || '',
+          question.answer_location[2] || '',
+          question.answer_location[3] || '',
+          question.filter ? '已过滤' : '未过滤'
+        ];
+        csvRows.push(row.join(','));
+      });
+      
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // 添加BOM以支持中文
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `question_data_${timestamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      console.log('CSV数据已导出');
+      return currentData;
+    }
+  };
+
+  // 获取当前数据的方法（供外部调用）
+  const getCurrentData = () => {
+    return data && data.length > 0 ? data[0] : null;
+  };
+
+  // 处理题目点击事件
   const handleQuestionClick = (questionIndex: number, question: Question) => {
     setSelectedQuestion(questionIndex);
 
@@ -329,11 +420,53 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
           borderRadius: '8px',
           overflowY: 'auto'
         }}>
-          <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#333' }}>题目列表</h3>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '20px'
+          }}>
+            <h3 style={{ margin: 0, color: '#333' }}>题目列表</h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => exportData('json')}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#007bff'}
+              >
+                导出JSON
+              </button>
+              <button
+                onClick={() => exportData('csv')}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1e7e34'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
+              >
+                导出CSV
+              </button>
+            </div>
+          </div>
           {data[0].question_list.map((question, index) => (
             <div
               key={index}
-              onClick={() => handleQuestionClick(index, question)}
               style={{
                 padding: '15px',
                 marginBottom: '10px',
@@ -341,18 +474,52 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
                 color: selectedQuestion === index ? 'white' : '#333',
                 border: '1px solid #ddd',
                 borderRadius: '6px',
-                cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 fontSize: '14px',
                 lineHeight: '1.5'
               }}
             >
-              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                题目 {index + 1}
+              <div 
+                onClick={() => handleQuestionClick(index, question)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                  题目 {index + 1}
+                </div>
+                <div>{question.question}</div>
+                <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8 }}>
+                  位置: [{question.answer_location.join(', ')}]
+                </div>
               </div>
-              <div>{question.question}</div>
-              <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8 }}>
-                位置: [{question.answer_location.join(', ')}]
+              <div style={{ 
+                marginTop: '10px', 
+                paddingTop: '10px', 
+                borderTop: '1px solid #eee',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ fontSize: '12px', opacity: 0.8 }}>
+                  skip状态:
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleFilterToggle(index);
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    backgroundColor: question.filter ? '#a7282aff' : '#38dc35ff',
+                    color: 'white',
+                    transition: 'background-color 0.2s ease'
+                  }}
+                >
+                  {question.filter ? 'skiped' : 'skip'}
+                </button>
               </div>
             </div>
           ))}

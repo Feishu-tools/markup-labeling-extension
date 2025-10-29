@@ -1,18 +1,36 @@
 [
     {
-        "image_url": "https://algo-public.s3.cn-north-1.amazonaws.com.cn/feishu/Kb0nsE73ghiwivtXegQcDMUZnNb-1duBmC-BT-EJ-7.png",
+        "image_url": "/s3-proxy/feishu/Kb0nsE73ghiwivtXegQcDMUZnNb-1duBmC-BT-EJ-7.png",
         "question_list": [
             {
                 "question": "在第三题第一小问的解答中，证明“△ACB为Rt△”的依据“AC²+CB²=AB²”写在了图片的哪个区域？",
-                "answer_location": [50, 50, 70, 70]
+                "answer_location": [50, 50, 70, 70],
+                "filter": false
             },
             {
                 "question": "检测一下，在第二题第(2)小问的解答中，计算步骤“∴AP=4, AQ=3”大致位于图片中什么位置？",
-                "answer_location": [100, 100, 400, 400]
+                "answer_location": [100, 100, 400, 400],
+                "filter": false
             },
             {
                 "question": "请问第三题第（1）小问的最终结论“会受影响”写在了哪个位置？",
-                "answer_location": []
+                "answer_location": [],
+                "filter": false
+            },
+            {
+                "question": "请问第三题第（1）小问的最终结论“会受影响”写在了哪个位置？",
+                "answer_location": [],
+                "filter": false
+            },
+            {
+                "question": "请问第三题第（1）小问的最终结论“会受影响”写在了哪个位置？",
+                "answer_location": [],
+                "filter": false
+            },
+            {
+                "question": "请问第三题第（1）小问的最终结论“会受影响”写在了哪个位置？",
+                "answer_location": [],
+                "filter": false
             }
         ]
     }
