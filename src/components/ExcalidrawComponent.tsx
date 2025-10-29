@@ -25,6 +25,18 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
   const imageElementId = 'background-image';
   const lastImageUrlRef = useRef<string | null>(null);
 
+  // 获取图片的原始尺寸
+  const getImageSize = (url: string): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  };
+
   // 将图片 URL 转换为 base64, 以便在 Excalidraw 中使用
   const toDataURL = async (url: string) => {
     try {
@@ -51,13 +63,15 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
       const setupScene = async () => {
         const imageChanged = imageUrl !== lastImageUrlRef.current;
         const elements = excalidrawAPI.getSceneElements();
+        const imageSize = await getImageSize(imageUrl);
+
         const imageElement = elements.find((el: any) => el.id === imageElementId) || {
           id: imageElementId,
           type: 'image' as const,
-          x: (excalidrawAPI.getAppState().width - 800) / 2,
-          y: (excalidrawAPI.getAppState().height - 600) / 2,
-          width: 800,
-          height: 600,
+          x: (excalidrawAPI.getAppState().width - imageSize.width) / 2,
+          y: (excalidrawAPI.getAppState().height - imageSize.height) / 2,
+          width: imageSize.width,
+          height: imageSize.height,
           angle: 0,
           strokeColor: 'transparent',
           backgroundColor: 'transparent',
@@ -97,6 +111,9 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
         }
 
         const questionRectangles = currentData.question_list.map((question, index) => {
+          if (!question.answer_location || (question.answer_location as any).length === 0) {
+            return null; // 如果 answer_location 为空，则不创建矩形
+          }
           const [x1, y1, x2, y2] = question.answer_location;
           return {
             id: `highlight-${index}`,
@@ -124,13 +141,13 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
             updated: Date.now(),
             link: null,
           };
-        });
+        }).filter(Boolean); // 过滤掉 null 值
 
         const allElements = [imageElement, ...questionRectangles];
         excalidrawAPI.updateScene({ elements: allElements });
 
         if (imageChanged) {
-          excalidrawAPI.scrollToContent(imageElement, { fitToContent: true });
+          excalidrawAPI.scrollToContent(imageElement);
         }
       };
 
@@ -154,6 +171,12 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
           return el;
         });
         excalidrawAPI.updateScene({ elements: updatedElements });
+        
+        excalidrawAPI.updateScene({
+          appState: {
+            selectedElementIds: { [targetElement.id]: true },
+          },
+        });
       } else {
         // 如果没有矩形，则进入绘制模式
         setDrawingMode({ active: true, questionIndex });
@@ -223,7 +246,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
   };
 
   return (
-    <div style={{ display: 'flex', height: '600px', gap: '20px' }}>
+    <div style={{ display: 'flex', height: '100vh', gap: '20px' }}>
       <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '8px' }}>
         <Excalidraw
           excalidrawAPI={(api) => setExcalidrawAPI(api)}
