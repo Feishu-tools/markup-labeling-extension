@@ -30,9 +30,10 @@ export default function App() {
     });
   }, []);
 
-  const handleDataChange = (newData: any) => {
+  const handleDataChange = (newData: any, isComplete: number) => {
     setStructuredData(newData);
     console.log('Updated data in App:', newData);
+    console.log('isComplete:', isComplete);
   };
 
   return (

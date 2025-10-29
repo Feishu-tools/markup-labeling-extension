@@ -1,1 +1,33 @@
 @import 'reset-css';
+
+/* 隐藏Excalidraw的样式面板和工具栏 */
+/* 隐藏左侧工具栏中的样式相关按钮 */
+.Island .Stack .Shape:nth-child(3),
+.Island .Stack .Shape:nth-child(6), 
+.Island .Stack .Shape:nth-child(9) {
+  display: none !important;
+}
+
+/* 隐藏顶部工具栏中的编辑和复制按钮 */
+.App-toolbar-content button[aria-label="Edit"],
+.App-toolbar-content button[aria-label="Duplicate"] {
+  display: none !important;
+}
+
+/* 隐藏锁定工具 */
+.ToolIcon__lock {
+  display: none !important;
+}
+
+/* 隐藏右侧的样式面板 */
+.excalidraw .Island:has(.panelColumn) {
+  display: none !important;
+}
+
+/* 更通用的样式面板隐藏 - 隐藏包含样式选项的面板 */
+.excalidraw .Island[data-testid="style-panel"],
+.excalidraw .Island:has([data-testid="stroke-color"]),
+.excalidraw .Island:has([data-testid="background-color"]),
+.excalidraw .Island:has([data-testid="stroke-width"]) {
+  display: none !important;
+}

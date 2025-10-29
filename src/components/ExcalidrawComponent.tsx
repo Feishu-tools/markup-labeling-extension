@@ -16,13 +16,14 @@ interface DataItem {
 
 interface ExcalidrawComponentProps {
   data?: DataItem[];
-  onDataChange?: (data: DataItem[]) => void;
+  onDataChange?: (data: DataItem[], isComplete: number) => void;
 }
 
 const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataChange }) => {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<number | null>(null);
   const [drawingMode, setDrawingMode] = useState<{ active: boolean; questionIndex: number | null }>({ active: false, questionIndex: null });
+  const [isComplete, setIsComplete] = useState<number>(0);
   const imageElementId = 'background-image';
   const lastImageUrlRef = useRef<string | null>(null);
 
@@ -222,7 +223,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
     const newData = JSON.parse(JSON.stringify(data)); // Deep copy
     newData[0].question_list[questionIndex].filter = !newData[0].question_list[questionIndex].filter;
     
-    onDataChange(newData);
+    onDataChange(newData, 1);
     console.log(`题目 ${questionIndex + 1} filter状态已切换为:`, newData[0].question_list[questionIndex].filter);
   };
 
@@ -396,7 +397,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
     }
 
     if (changed) {
-      onDataChange(newData);
+      onDataChange(newData, 1);
     }
   };
 
@@ -427,7 +428,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
             marginBottom: '20px'
           }}>
             <h3 style={{ margin: 0, color: '#333' }}>题目列表</h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            {/* <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={() => exportData('json')}
                 style={{
@@ -462,7 +463,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
               >
                 导出CSV
               </button>
-            </div>
+            </div> */}
           </div>
           {data[0].question_list.map((question, index) => (
             <div
@@ -523,6 +524,37 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
               </div>
             </div>
           ))}
+          
+          {/* 确认按钮 */}
+          <div style={{ 
+            marginTop: '20px', 
+            paddingTop: '20px', 
+            borderTop: '2px solid #ddd' 
+          }}>
+            <button
+              onClick={() => {
+                if (data && data.length > 0 && onDataChange) {
+                  onDataChange(data, 2);
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '12px 20px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                backgroundColor: '#28a745',
+                color: 'white',
+                transition: 'background-color 0.2s ease'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
+            >
+              确认完成
+            </button>
+          </div>
         </div>
       )}
     </div>
