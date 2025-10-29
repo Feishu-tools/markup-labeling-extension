@@ -6,12 +6,43 @@ import ExcalidrawComponent from './components/ExcalidrawComponent';
 import mockData from './mock/data.json';
 
 export default function App() {
-  const [structuredData, setStructuredData] = useState<any>(mockData);
+  const [structuredData, setStructuredData] = useState<any>([]);
   const [showExcalidraw, setShowExcalidraw] = useState(false);
   const [allFieldsData, setAllFieldsData] = useState<FieldData[]>([]);
   const [recordIds, setRecordIds] = useState<string[]>([]);
   const [currentRecordIndex, setCurrentRecordIndex] = useState<number>(-1);
   const [currentTableId, setCurrentTableId] = useState<string>('');
+
+  // 辅助函数：处理JSON字段加载
+  const processJsonFields = (fields: FieldData[]) => {
+    const outputJsonField = fields.find(field => field.fieldName === '输出json');
+    const inputJsonField = fields.find(field => field.fieldName === '输入json');
+
+    let jsonDataToParse = null;
+
+    if (outputJsonField && outputJsonField.value) {
+      jsonDataToParse = outputJsonField.value;
+    } else if (inputJsonField && inputJsonField.value) {
+      jsonDataToParse = inputJsonField.value;
+    }
+
+    if (jsonDataToParse) {
+      try {
+        let structuredData = '';
+        for (const item of jsonDataToParse) {
+          if (item.type === 'text' || item.type === 'url') {
+            structuredData += item.text || '';
+          }
+        }
+        setStructuredData(JSON.parse(structuredData));
+      } catch (error) {
+        console.error('解析JSON时出错:', error);
+        setStructuredData({});
+      }
+    } else {
+      setStructuredData({});
+    }
+  };
   
   useEffect(() => {
     // 监听选中记录变化，获取所有字段数据
@@ -42,34 +73,12 @@ export default function App() {
 
       if (rowData.data && rowData.data.length > 0) {
         console.log('字段总数:', rowData.data.length);
-        console.log('所有字段详细信息:');
-        
-        rowData.data.forEach((field: FieldData, index: number) => {
-          console.log(`字段 ${index + 1}:`);
-          console.log('  - 字段ID:', field.fieldId);
-          console.log('  - 字段名称:', field.fieldName);
-          console.log('  - 字段类型:', field.fieldType);
-          console.log('  - 是否主键:', field.isPrimary);
-          console.log('  - 字段值:', field.value);
-          console.log('---');
-          if (field.fieldName === '输入json') {
-            if (field.value === null) {
-              setStructuredData({});
-            } else {
-              let structuredData = '';
-              for (const item of field.value) {
-                if (item.type === 'text' || item.type === 'url') {
-                  structuredData += item.text || '';
-                }
-              }
-              setStructuredData(JSON.parse(structuredData));
-            }
-          }
-        });
         setAllFieldsData(rowData.data);
+        processJsonFields(rowData.data);
       } else {
         console.log('没有找到字段数据');
         setAllFieldsData([]);
+        setStructuredData({});
       }
     });
 
@@ -83,6 +92,28 @@ export default function App() {
     setStructuredData(newData);
     console.log('Updated data in App:', newData);
     console.log('isComplete:', isComplete);
+
+    const WriteJsonData = async () => {
+      const writeResult = await writeDataToField(JSON.stringify(newData, null, 4), {
+        fieldName: '输出json',
+        useCurrentSelection: false,
+        tableId: currentTableId,
+        recordId: recordIds[currentRecordIndex]
+      });
+    }
+    WriteJsonData();
+
+    if (isComplete === 1) {
+      const WriteData = async () => {
+        const writeResult = await writeDataToField("标注中", {
+          fieldName: '标注状态',
+          useCurrentSelection: false,
+          tableId: currentTableId,
+          recordId: recordIds[currentRecordIndex]
+        });
+      }
+      WriteData();
+    }
     if (isComplete === 2) {
       const WriteData = async () => {
         const writeResult = await writeDataToField("已标注", {
@@ -115,22 +146,7 @@ export default function App() {
           setCurrentRecordIndex(prevIndex);
           setAllFieldsData(rowData.data);
           console.log('切换到上一行，索引:', prevIndex + 1, '/', recordIds.length);
-          
-          // 处理输入json字段
-          const jsonField = rowData.data.find(field => field.fieldName === '输入json');
-          if (jsonField) {
-            if (jsonField.value === null) {
-              setStructuredData({});
-            } else {
-              let structuredData = '';
-              for (const item of jsonField.value) {
-                if (item.type === 'text' || item.type === 'url') {
-                  structuredData += item.text || '';
-                }
-              }
-              setStructuredData(JSON.parse(structuredData));
-            }
-          }
+          processJsonFields(rowData.data);
         }
       } catch (error) {
         console.error('切换到上一行时出错:', error);
@@ -156,22 +172,7 @@ export default function App() {
           setCurrentRecordIndex(nextIndex);
           setAllFieldsData(rowData.data);
           console.log('切换到下一行，索引:', nextIndex + 1, '/', recordIds.length);
-          
-          // 处理输入json字段
-          const jsonField = rowData.data.find(field => field.fieldName === '输入json');
-          if (jsonField) {
-            if (jsonField.value === null) {
-              setStructuredData({});
-            } else {
-              let structuredData = '';
-              for (const item of jsonField.value) {
-                if (item.type === 'text' || item.type === 'url') {
-                  structuredData += item.text || '';
-                }
-              }
-              setStructuredData(JSON.parse(structuredData));
-            }
-          }
+          processJsonFields(rowData.data);
         }
       } catch (error) {
         console.error('切换到下一行时出错:', error);
@@ -180,6 +181,10 @@ export default function App() {
   };
 
   return (
-    <ExcalidrawComponent data={structuredData} onDataChange={handleDataChange}></ExcalidrawComponent>
+    <ExcalidrawComponent 
+      key={recordIds[currentRecordIndex] || 'initial'}
+      data={structuredData} 
+      onDataChange={handleDataChange}
+    />
   )
 }

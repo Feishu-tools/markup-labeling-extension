@@ -59,10 +59,10 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
   // 将图片 URL 转换为 base64, 以便在 Excalidraw 中使用
   const toDataURL = async (url: string) => {
     try {
-      console.log("Fetching image for data URL conversion:", url);
+      // console.log("Fetching image for data URL conversion:", url);
       // Ensure the URL is absolute for the fetch request to be handled by the proxy
       const absoluteUrl = new URL(url, window.location.origin).href;
-      console.log("Absolute URL for fetch:", absoluteUrl);
+      // console.log("Absolute URL for fetch:", absoluteUrl);
       const response = await fetch(absoluteUrl);
       const blob = await response.blob();
       return new Promise<string>((resolve, reject) => {
@@ -175,13 +175,13 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
           const text = {
             id: `text-${index}`,
             type: 'text' as const,
-            x: rectX + rectWidth / 2 - 20, // 居中显示，稍微偏移
+            x: rectX + rectWidth / 2 - 40, // 居中显示，稍微偏移
             y: rectY - 25, // 在矩形框上方
-            width: 40,
+            width: 80,
             height: 20,
-            text: `题目${index + 1}`,
+            text: `ID: ${index + 1}`,
             fontSize: 24,
-            fontFamily: 1,
+            fontFamily: 2,
             textAlign: 'center' as const,
             verticalAlign: 'middle' as const,
             strokeColor: '#7c0202ff',
@@ -230,66 +230,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
     newData[0].question_list[questionIndex].filter = !newData[0].question_list[questionIndex].filter;
     
     onDataChange(newData, 1);
-    console.log(`题目 ${questionIndex + 1} filter状态已切换为:`, newData[0].question_list[questionIndex].filter);
-  };
-
-  // 数据导出功能
-  const exportData = (format: 'json' | 'csv' = 'json') => {
-    if (!data || !data.length) {
-      console.warn('没有可导出的数据');
-      return null;
-    }
-
-    const currentData = data[0];
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-
-    if (format === 'json') {
-      // 导出JSON格式
-      const jsonData = JSON.stringify(currentData, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `question_data_${timestamp}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      console.log('JSON数据已导出:', currentData);
-      return currentData;
-    } else if (format === 'csv') {
-      // 导出CSV格式
-      const headers = ['题目序号', '题目内容', '答案位置X1', '答案位置Y1', '答案位置X2', '答案位置Y2', '过滤状态'];
-      const csvRows = [headers.join(',')];
-      
-      currentData.question_list.forEach((question, index) => {
-        const row = [
-          index + 1,
-          `"${question.question.replace(/"/g, '""')}"`, // 转义双引号
-          question.answer_location[0] || '',
-          question.answer_location[1] || '',
-          question.answer_location[2] || '',
-          question.answer_location[3] || '',
-          question.filter ? '已过滤' : '未过滤'
-        ];
-        csvRows.push(row.join(','));
-      });
-      
-      const csvContent = csvRows.join('\n');
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // 添加BOM以支持中文
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `question_data_${timestamp}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      console.log('CSV数据已导出');
-      return currentData;
-    }
+    console.log(`ID: ${questionIndex + 1} filter状态已切换为:`, newData[0].question_list[questionIndex].filter);
   };
 
   // 获取当前数据的方法（供外部调用）
@@ -433,43 +374,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
             alignItems: 'center',
             marginBottom: '20px'
           }}>
-            <h3 style={{ margin: 0, color: '#333' }}>题目列表</h3>
-            {/* <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => exportData('json')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  transition: 'background-color 0.2s ease'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#007bff'}
-              >
-                导出JSON
-              </button>
-              <button
-                onClick={() => exportData('csv')}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  backgroundColor: '#28a745',
-                  color: 'white',
-                  transition: 'background-color 0.2s ease'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1e7e34'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
-              >
-                导出CSV
-              </button>
-            </div> */}
+          <h3 style={{ margin: 0, color: '#333' }}>题目列表</h3>
           </div>
           {data[0].question_list.map((question, index) => {
             const hasAnswer = hasValidAnswerLocation(question.answer_location);
@@ -496,7 +401,7 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
                 style={{ cursor: 'pointer' }}
               >
                 <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                  题目 {index + 1}
+                  ID: {index + 1}
                 </div>
                 <div>{question.question}</div>
                 <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8 }}>
