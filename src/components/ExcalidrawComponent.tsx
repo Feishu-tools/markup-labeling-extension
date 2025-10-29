@@ -110,18 +110,24 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
           lastImageUrlRef.current = imageUrl;
         }
 
-        const questionRectangles = currentData.question_list.map((question, index) => {
+        const questionElements = currentData.question_list.map((question, index) => {
           if (!question.answer_location || (question.answer_location as any).length === 0) {
-            return null; // 如果 answer_location 为空，则不创建矩形
+            return []; // 如果 answer_location 为空，则不创建矩形和文本
           }
           const [x1, y1, x2, y2] = question.answer_location;
-          return {
+          const rectX = imageElement.x + x1;
+          const rectY = imageElement.y + y1;
+          const rectWidth = x2 - x1;
+          const rectHeight = y2 - y1;
+          
+          // 创建矩形框
+          const rectangle = {
             id: `highlight-${index}`,
             type: 'rectangle' as const,
-            x: imageElement.x + x1,
-            y: imageElement.y + y1,
-            width: x2 - x1,
-            height: y2 - y1,
+            x: rectX,
+            y: rectY,
+            width: rectWidth,
+            height: rectHeight,
             strokeColor: '#ff0000',
             backgroundColor: 'transparent',
             strokeWidth: 2,
@@ -137,13 +143,51 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
             groupIds: [],
             frameId: null,
             roundness: null,
-            boundElements: null,
+            boundElements: [{ id: `text-${index}`, type: 'text' }],
             updated: Date.now(),
             link: null,
           };
-        }).filter(Boolean); // 过滤掉 null 值
 
-        const allElements = [imageElement, ...questionRectangles];
+          // 创建文本元素，位置在矩形框上方
+          const text = {
+            id: `text-${index}`,
+            type: 'text' as const,
+            x: rectX + rectWidth / 2 - 20, // 居中显示，稍微偏移
+            y: rectY - 25, // 在矩形框上方
+            width: 40,
+            height: 20,
+            text: `题目${index + 1}`,
+            fontSize: 24,
+            fontFamily: 1,
+            textAlign: 'center' as const,
+            verticalAlign: 'middle' as const,
+            strokeColor: '#7c0202ff',
+            backgroundColor: 'white',
+            fillStyle: 'solid' as const,
+            strokeWidth: 1,
+            strokeStyle: 'solid' as const,
+            roughness: 0,
+            opacity: 100,
+            angle: 0,
+            seed: Math.floor(Math.random() * 1000000),
+            versionNonce: Math.floor(Math.random() * 1000000),
+            isDeleted: false,
+            locked: false,
+            groupIds: [],
+            frameId: null,
+            roundness: null,
+            boundElements: [{ id: `highlight-${index}`, type: 'rectangle' }],
+            updated: Date.now(),
+            link: null,
+            containerId: null,
+            originalText: `ID: ${index + 1}`,
+            lineHeight: 1.25,
+          };
+
+          return [rectangle, text];
+        }).flat().filter(Boolean); // 展平数组并过滤掉空值
+
+        const allElements = [imageElement, ...questionElements];
         excalidrawAPI.updateScene({ elements: allElements });
 
         if (imageChanged) {
@@ -168,9 +212,29 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
           if (el.id.startsWith('highlight-')) {
             return { ...el, strokeColor: el.id === `highlight-${questionIndex}` ? '#007bff' : '#ff0000' };
           }
+          if (el.id.startsWith('text-')) {
+            const textIndex = parseInt(el.id.split('-')[1], 10);
+            return { ...el, strokeColor: textIndex === questionIndex ? '#007bff' : '#ff0000' };
+          }
           return el;
         });
-        excalidrawAPI.updateScene({ elements: updatedElements });
+
+        // 同步更新文本位置
+        const finalElements = updatedElements.map((el: any) => {
+          if (el.id.startsWith('text-')) {
+            const index = parseInt(el.id.split('-')[1], 10);
+            const correspondingRect = updatedElements.find((e: any) => e.id === `highlight-${index}`);
+            if (correspondingRect) {
+              return {
+                ...el,
+                x: correspondingRect.x + correspondingRect.width / 2 - 20,
+                y: correspondingRect.y - 25,
+              };
+            }
+          }
+          return el;
+        });
+        excalidrawAPI.updateScene({ elements: finalElements });
         
         excalidrawAPI.updateScene({
           appState: {
