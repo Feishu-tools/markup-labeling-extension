@@ -1,11 +1,12 @@
 import { bitable } from '@lark-base-open/js-sdk';
 import './App.css';
 import { getStructuredData, watchSelectionData} from './utils/get_structured_data';
-import { ExcalidrawComponent } from './components/ExcalidrawComponent';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import ExcalidrawComponent from './components/ExcalidrawComponent';
+import mockData from './mock/data.json';
 
 export default function App() {
-  const [structuredData, setStructuredData] = useState<object>({});
+  const [structuredData, setStructuredData] = useState<any>(mockData);
   const [showExcalidraw, setShowExcalidraw] = useState(false);
   
   useEffect(() => {
@@ -29,19 +30,12 @@ export default function App() {
     });
   }, []);
 
+  const handleDataChange = (newData: any) => {
+    setStructuredData(newData);
+    console.log('Updated data in App:', newData);
+  };
+
   return (
-    <main>
-      {/* <ExcalidrawComponent></ExcalidrawComponent> */}
-      <div>
-        <pre style={{ 
-          background: '#f5f5f5', 
-          padding: '10px', 
-          borderRadius: '4px',
-          overflow: 'auto'
-        }}>
-          {JSON.stringify(structuredData, null, 2)}
-        </pre>
-      </div>
-    </main>
+      <ExcalidrawComponent data={structuredData} onDataChange={handleDataChange}></ExcalidrawComponent>
   )
 }
