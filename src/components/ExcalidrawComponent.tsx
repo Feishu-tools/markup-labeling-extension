@@ -302,6 +302,17 @@ const ExcalidrawComponent: React.FC<ExcalidrawComponentProps> = ({ data, onDataC
     const newData = JSON.parse(JSON.stringify(data)); // Deep copy
     let changed = false;
 
+    // 检查删除的矩形框
+    const existingHighlightIds = new Set(elements.map((el: any) => el.id));
+    newData[0].question_list.forEach((question: any, index: number) => {
+      const highlightId = `highlight-${index}`;
+      if (question.answer_location.length > 0 && !existingHighlightIds.has(highlightId)) {
+        question.answer_location = [];
+        changed = true;
+        console.log(`矩形框 ${highlightId} 已删除，同步更新数据`);
+      }
+    });
+
     if (drawingMode.active && drawingMode.questionIndex !== null) {
       const newElement = elements.find((el: any) => !el.id.startsWith('highlight-') && el.type === 'rectangle');
       if (newElement) {
